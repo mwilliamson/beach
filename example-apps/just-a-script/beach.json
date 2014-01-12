@@ -5,3 +5,4 @@
     },
     "command": "./server.py ${port}"
 }
+    

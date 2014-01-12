@@ -15,14 +15,16 @@ class Deployer(object):
     
     def deploy(self, path, params):
         app_config = self._read_app_config(path)
+        service_name = "beach-{0}".format(app_config["name"])
+        self._create_user_if_missing(service_name)
         app_name = app_config["name"]
-        home_path = self._shell.run(["sh", "-c", "echo $HOME"]).output.strip()
+        home_path = self._shell.run(["su", service_name, "-", "-c" "sh -c 'echo $HOME'"]).output.strip()
         app_path = self._path_join(home_path, "beach-apps", app_name)
         self._shell.run(["mkdir", "-p", app_path])
         
         self._upload_dir(path, app_path)
         
-        self._set_up_service(app_config, app_path, params)
+        self._set_up_service(service_name, app_config, app_path, params)
     
     def _upload_dir(self, local_path, remote_path):
         with self._create_temp_tarball(local_path) as local_tarball:
@@ -41,14 +43,17 @@ class Deployer(object):
         )
         self._shell.run(["rm", remote_tarball_path])
     
-    def _set_up_service(self, app_config, app_path, params):
+    def _set_up_service(self, service_name, app_config, app_path, params):
         supervisor = Supervisor(self._shell, os.path.join("shell/supervisors/runit"))
         supervisor.install()
-        service_name = "beach-{0}".format(app_config["name"])
         # TODO: read params from app config
         # TODO: run as less privileged user
         command = app_config["command"]
         supervisor.set_up(service_name, env=params, cwd=app_path, command=command)
+        
+    def _create_user_if_missing(self, username):
+        if self._shell.run(["id", username], allow_error=True).return_code != 0:
+            self._shell.run(["adduser", "--disabled-password", "--gecos", "", username])
     
     @contextlib.contextmanager
     def _create_temp_tarball(self, path):
@@ -82,7 +87,10 @@ class Supervisor(object):
             "{0}={1}".format(key, pipes.quote(value))
             for key, value in env.items()
         )
-        full_command = "set -e\n{0}\ncd {1};exec {2}".format(env_update, pipes.quote(cwd), command)
+        exec_command = "set -e\n{0}\ncd {1}\nexec {2}".format(
+            env_update, pipes.quote(cwd), command)
+        full_command = "set -e\nexec su {0} - -c sh -c {1}".format(
+            service_name, pipes.quote(exec_command))
         self._run_script(
             "create-service",
             {"service_name": service_name, "command": full_command},

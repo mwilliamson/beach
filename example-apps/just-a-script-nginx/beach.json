@@ -1,0 +1,22 @@
+{
+    "name": "nginx-just-a-script",
+    "require": {
+        "port": "param",
+        "internal_port": "port"
+    },
+    "dependencies": {
+        "nginx-front-end": {
+            "package": "../nginx-front-end",
+            "params": {
+                "external_port": "${port}",
+                "internal_port": "${internal_port}"
+            }
+        },
+        "just-a-script": {
+            "package": "../just-a-script",
+            "params": {
+                "port": "${internal_port}"
+            }
+        }
+    }
+}

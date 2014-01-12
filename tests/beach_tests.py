@@ -12,7 +12,7 @@ _local = spur.LocalShell()
 class BeachTests(object):
     def _start_vm(self):
         provider = peachtree.qemu_provider()
-        return provider.start("ubuntu-precise-amd64")
+        return provider.start(self.image_name)
     
     @istest
     def can_use_vm(self):
@@ -23,16 +23,6 @@ class BeachTests(object):
             assert_equal("hello\n", result.output)
 
 
-#~ @istest
-#~ class BeachPrecise32Tests(BeachTests):
-    #~ box_name = "precise32"
-
-
 @istest
 class BeachPrecise64Tests(BeachTests):
-    box_name = "ubuntu-precise-amd64"
-
-
-#~ @istest
-#~ class BeachWheezy64Tests(BeachTests):
-    #~ box_name = "wheezy64"
+    image_name = "ubuntu-precise-amd64"

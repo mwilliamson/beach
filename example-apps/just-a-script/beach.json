@@ -3,6 +3,6 @@
     "require": {
         "port": "param"
     },
-    "command": "./server.py ${port}"
+    "service": "./server.py ${port}"
 }
     

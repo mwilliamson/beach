@@ -48,7 +48,7 @@ class Deployer(object):
         supervisor.install()
         # TODO: read params from app config
         # TODO: run as less privileged user
-        command = app_config["command"]
+        command = app_config["service"]
         supervisor.set_up(service_name, env=params, cwd=app_path, command=command)
         
     def _create_user_if_missing(self, username):

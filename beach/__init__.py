@@ -6,6 +6,7 @@ import tempfile
 import contextlib
 import shutil
 import uuid
+import pipes
 
 
 class Deployer(object):
@@ -77,12 +78,11 @@ class Supervisor(object):
         self._run_script("install")
     
     def set_up(self, service_name, env, cwd, command):
-        # TODO: escape single quote marks
         env_update = "\n".join(
-            "{0}='{1}'".format(key, value)
+            "{0}={1}".format(key, pipes.quote(value))
             for key, value in env.items()
         )
-        full_command = "set -e\n{0}\ncd '{1}';exec {2}".format(env_update, cwd, command)
+        full_command = "set -e\n{0}\ncd {1};exec {2}".format(env_update, pipes.quote(cwd), command)
         self._run_script(
             "create-service",
             {"service_name": service_name, "command": full_command},

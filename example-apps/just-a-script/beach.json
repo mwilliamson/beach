@@ -1,0 +1,7 @@
+{
+    "name": "just-a-script",
+    "require": {
+        "port": "param"
+    },
+    "command": "./server.py ${PORT}"
+}

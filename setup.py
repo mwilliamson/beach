@@ -17,6 +17,7 @@ setup(
     packages=['beach'],
     scripts=['scripts/beach'],
     install_requires=[
+        "tempman>=0.1.2,<0.2",
     ],
     keywords="deploy deployment",
 )

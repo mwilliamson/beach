@@ -1,0 +1,14 @@
+#!/usr/bin/env sh
+
+set -e
+
+service_path="/etc/sv/${service_name}"
+mkdir -p "${service_path}"
+
+service_run_path="${service_path}/run"
+run_contents="#!/usr/bin/env sh
+${command}"
+echo "${run_contents}" > "${service_run_path}"
+chmod +x "${service_run_path}"
+
+ln -sfT "${service_path}" "/etc/service/${service_name}"

@@ -41,7 +41,7 @@ class Deployer(object):
         self._shell.run(["rm", remote_tarball_path])
     
     def _set_up_service(self, app_config, app_path, params):
-        supervisor = RunitSupervisor(self._shell)
+        supervisor = Supervisor(self._shell, os.path.join("shell/supervisors/runit"))
         supervisor.install()
         service_name = "beach-{0}".format(app_config["name"])
         # TODO: read params from app config
@@ -68,28 +68,33 @@ class Deployer(object):
         return posixpath.join(*args)
 
 
-class RunitSupervisor(object):
-    def __init__(self, shell):
+class Supervisor(object):
+    def __init__(self, shell, scripts_dir):
         self._shell = shell
+        self._scripts_dir = scripts_dir
     
     def install(self):
-        self._shell.run(["apt-get", "install", "runit", "-y"])
+        self._run_script("install")
     
     def set_up(self, service_name, env, cwd, command):
-        service_path = "/etc/sv/{0}".format(service_name)
-        service_run_path = os.path.join(service_path, "run")
         # TODO: escape single quote marks
         env_update = "\n".join(
             "{0}='{1}'".format(key, value)
             for key, value in env.items()
         )
-        run_contents = "#!/usr/bin/env sh\n\nset -e\n{0}\ncd '{1}';exec {2}".format(env_update, cwd, command)
-        self._write_remote_file(service_run_path, run_contents)
-        self._shell.run(["chmod", "+x", service_run_path])
-        self._shell.run(["ln", "-sfT", service_path, "/etc/service/{0}".format(service_name)])
+        full_command = "set -e\n{0}\ncd '{1}';exec {2}".format(env_update, cwd, command)
+        self._run_script(
+            "create-service",
+            {"service_name": service_name, "command": full_command},
+        )
     
-    def _write_remote_file(self, path, contents):
-        self._shell.run(["mkdir", "-p", os.path.dirname(path)])
-        with self._shell.open(path, "w") as remote_file:
-            remote_file.write(contents)
+    def _run_script(self, name, env={}):
+        self._shell.run(["sh", "-c", self._read_script(name)], update_env=env)
+    
+    def _read_script(self, name):
+        return _read_file(os.path.join(self._scripts_dir, name))
         
+
+def _read_file(path):
+    with open(path) as f:
+        return f.read()

@@ -8,6 +8,7 @@
         "nginx-front-end": {
             "package": "../nginx-front-end",
             "params": {
+                "name": "just-a-script",
                 "external_port": "${port}",
                 "internal_port": "${internal_port}"
             }

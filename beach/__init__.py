@@ -15,7 +15,7 @@ class Deployer(object):
     def deploy(self, path, params):
         app_config = self._read_app_config(path)
         app_name = app_config["name"]
-        home_path = self._shell.run(["sh", "-c", "echo $PATH"]).output.strip()
+        home_path = self._shell.run(["sh", "-c", "echo $HOME"]).output.strip()
         app_path = self._path_join(home_path, "beach-apps", app_name)
         self._shell.run(["mkdir", "-p", app_path])
         

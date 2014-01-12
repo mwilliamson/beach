@@ -2,8 +2,10 @@
     "name": "nginx-reverse-proxy",
     "require": {
         "external_port": "param",
-        "internal_port": "param",
-        "nginx": "system-package"
+        "internal_port": "param"
     },
+    "dependencies": [
+        {"type": "system-package", "name": "nginx"}
+    ],
     "install": "./install ${internal_port} ${external_port}"
 }

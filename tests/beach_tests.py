@@ -47,7 +47,7 @@ class BeachTests(object):
             address = "http://{0}:{1}".format(machine.external_hostname(), machine.public_port(8080))
             # TODO: remove sleep
             import time
-            time.sleep(1)
+            time.sleep(5)
             response = requests.get(address)
             assert_equal("Hello", response.text)
 

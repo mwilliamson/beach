@@ -41,28 +41,13 @@ class Deployer(object):
         self._shell.run(["rm", remote_tarball_path])
     
     def _set_up_service(self, app_config, app_path, params):
-        self._shell.run(["apt-get", "install", "runit", "-y"])
-        
-        # TODO: run as less privileged user
+        supervisor = RunitSupervisor(self._shell)
+        supervisor.install()
         service_name = "beach-{0}".format(app_config["name"])
-        service_path = "/etc/sv/{0}".format(service_name)
-        service_run_path = os.path.join(service_path, "run")
         # TODO: read params from app config
-        # TODO: escape single quote marks
-        env_update = "\n".join(
-            "{0}='{1}'".format(key, value)
-            for key, value in params.items()
-        )
+        # TODO: run as less privileged user
         command = app_config["command"]
-        run_contents = "#!/usr/bin/env sh\n\nset -e\n{0}\ncd '{1}';exec {2}".format(env_update, app_path, command)
-        self._write_remote_file(service_run_path, run_contents)
-        self._shell.run(["chmod", "+x", service_run_path])
-        self._shell.run(["ln", "-sfT", service_path, "/etc/service/{0}".format(service_name)])
-    
-    def _write_remote_file(self, path, contents):
-        self._shell.run(["mkdir", "-p", os.path.dirname(path)])
-        with self._shell.open(path, "w") as remote_file:
-            remote_file.write(contents)
+        supervisor.set_up(service_name, env=params, cwd=app_path, command=command)
     
     @contextlib.contextmanager
     def _create_temp_tarball(self, path):
@@ -83,6 +68,28 @@ class Deployer(object):
         return posixpath.join(*args)
 
 
-class WrappedStdin(object):
-    def __init__(self, process):
-        self._process = process
+class RunitSupervisor(object):
+    def __init__(self, shell):
+        self._shell = shell
+    
+    def install(self):
+        self._shell.run(["apt-get", "install", "runit", "-y"])
+    
+    def set_up(self, service_name, env, cwd, command):
+        service_path = "/etc/sv/{0}".format(service_name)
+        service_run_path = os.path.join(service_path, "run")
+        # TODO: escape single quote marks
+        env_update = "\n".join(
+            "{0}='{1}'".format(key, value)
+            for key, value in env.items()
+        )
+        run_contents = "#!/usr/bin/env sh\n\nset -e\n{0}\ncd '{1}';exec {2}".format(env_update, cwd, command)
+        self._write_remote_file(service_run_path, run_contents)
+        self._shell.run(["chmod", "+x", service_run_path])
+        self._shell.run(["ln", "-sfT", service_path, "/etc/service/{0}".format(service_name)])
+    
+    def _write_remote_file(self, path, contents):
+        self._shell.run(["mkdir", "-p", os.path.dirname(path)])
+        with self._shell.open(path, "w") as remote_file:
+            remote_file.write(contents)
+        

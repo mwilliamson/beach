@@ -47,7 +47,6 @@ class Deployer(object):
         supervisor = Supervisor(self._shell, os.path.join("shell/supervisors/runit"))
         supervisor.install()
         # TODO: read params from app config
-        # TODO: run as less privileged user
         command = app_config["service"]
         supervisor.set_up(service_name, env=params, cwd=app_path, command=command)
         

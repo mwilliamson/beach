@@ -13,35 +13,56 @@ class Deployer(object):
         self._shell = shell
     
     def deploy(self, path, params):
-        self._upload_dir(path)
+        app_config = self._read_app_config(path)
+        app_name = app_config["name"]
+        home_path = self._shell.run(["sh", "-c", "echo $PATH"]).output.strip()
+        app_path = self._path_join(home_path, "beach-apps", app_name)
+        self._shell.run(["mkdir", "-p", app_path])
+        
+        self._upload_dir(path, app_path)
+        
+        self._set_up_service(app_config, app_path, params)
     
-    def _upload_dir(self, path):
-        with self._create_temp_tarball(path) as app_tarball:
-            app_config = self._read_app_config(path)
-            app_name = app_config["name"]
-            home_path = self._shell.run(["sh", "-c", "echo $PATH"]).output.strip()
-            app_path = self._path_join(home_path, "beach-apps", app_name)
-            self._shell.run(["mkdir", "-p", app_path])
-            
+    def _upload_dir(self, local_path, remote_path):
+        with self._create_temp_tarball(local_path) as local_tarball:
             # TODO: hash file to get name
-            remote_app_tarball_path = os.path.join(home_path, str(uuid.uuid4()))
-            with self._shell.open(remote_app_tarball_path, "w") as remote_app_tarball:
-                shutil.copyfileobj(app_tarball, remote_app_tarball)
-            
+            remote_tarball_path = os.path.join("/tmp", str(uuid.uuid4()))
+            with self._shell.open(remote_tarball_path, "w") as remote_tarball:
+                shutil.copyfileobj(local_tarball, remote_tarball)
+        
+        self._shell.run(["mkdir", "-p", remote_path])
         self._shell.run(
             [
-                "tar", "xzf", remote_app_tarball_path,
+                "tar", "xzf", remote_tarball_path,
                 "--strip-components=1",
             ],
-            cwd=app_path,
+            cwd=remote_path,
         )
-        print self._shell.run(["ls", "-a"], cwd=app_path).output
-        # TODO: use runit
-        self._shell.spawn(
-            ["sh", "-c", app_config["command"]],
-            update_env={"PORT": "8080"},
-            cwd=app_path,
+        self._shell.run(["rm", remote_tarball_path])
+    
+    def _set_up_service(self, app_config, app_path, params):
+        self._shell.run(["apt-get", "install", "runit", "-y"])
+        
+        # TODO: run as less privileged user
+        service_name = "beach-{0}".format(app_config["name"])
+        service_path = "/etc/sv/{0}".format(service_name)
+        service_run_path = os.path.join(service_path, "run")
+        # TODO: read params from app config
+        # TODO: escape single quote marks
+        env_update = "\n".join(
+            "{0}='{1}'".format(key, value)
+            for key, value in params.items()
         )
+        command = app_config["command"]
+        run_contents = "#!/usr/bin/env sh\n\nset -e\n{0}\ncd '{1}';exec {2}".format(env_update, app_path, command)
+        self._write_remote_file(service_run_path, run_contents)
+        self._shell.run(["chmod", "+x", service_run_path])
+        self._shell.run(["ln", "-sfT", service_path, "/etc/service/{0}".format(service_name)])
+    
+    def _write_remote_file(self, path, contents):
+        self._shell.run(["mkdir", "-p", os.path.dirname(path)])
+        with self._shell.open(path, "w") as remote_file:
+            remote_file.write(contents)
     
     @contextlib.contextmanager
     def _create_temp_tarball(self, path):

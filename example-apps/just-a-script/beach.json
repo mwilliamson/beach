@@ -3,5 +3,5 @@
     "require": {
         "port": "param"
     },
-    "command": "./server.py ${PORT}"
+    "command": "./server.py ${port}"
 }

@@ -1,0 +1,8 @@
+{
+    "name": "just-a-script",
+    "require": {
+        "port": "param"
+    },
+    "dependencies": ["message"],
+    "service": "./server.py ${port} ${message.value}"
+}

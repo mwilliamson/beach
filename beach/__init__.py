@@ -11,11 +11,20 @@ import re
 
 
 class Deployer(object):
-    def __init__(self, shell):
+    def __init__(self, shell, registry):
         self._shell = shell
+        self._registry = registry
     
     def deploy(self, path, params):
         app_config = self._read_app_config(path)
+        
+        # TODO: Read params from app config to ensure all are satisfied.
+        env = params.copy()
+        for dependency_name in app_config.get("dependencies", []):
+            service = self._registry.find_service(dependency_name)
+            for key, value in service.provides.items():
+                env["{0}.{1}".format(dependency_name, key)] = value
+        
         service_name = "beach-{0}".format(app_config["name"])
         self._create_user_if_missing(service_name)
         app_name = app_config["name"]
@@ -25,7 +34,7 @@ class Deployer(object):
         
         self._upload_dir(path, app_path)
         
-        self._set_up_service(service_name, app_config, app_path, params)
+        self._set_up_service(service_name, app_config, app_path, env)
     
     def _upload_dir(self, local_path, remote_path):
         with self._create_temp_tarball(local_path) as local_tarball:
@@ -44,12 +53,11 @@ class Deployer(object):
         )
         self._shell.run(["rm", remote_tarball_path])
     
-    def _set_up_service(self, service_name, app_config, app_path, params):
+    def _set_up_service(self, service_name, app_config, app_path, env):
         supervisor = Supervisor(self._shell, os.path.join("shell/supervisors/runit"))
         supervisor.install()
-        # TODO: read params from app config
         command = app_config["service"]
-        supervisor.set_up(service_name, env=params, cwd=app_path, command=command)
+        supervisor.set_up(service_name, env=env, cwd=app_path, command=command)
         
     def _create_user_if_missing(self, username):
         if self._shell.run(["id", username], allow_error=True).return_code != 0:
@@ -91,7 +99,6 @@ class Supervisor(object):
             pipes.quote(cwd), substituted_command)
         full_command = "set -e\nexec su {0} - -c sh -c {1}".format(
             service_name, pipes.quote(exec_command))
-        print full_command
         self._run_script(
             "create-service",
             {"service_name": service_name, "command": full_command},

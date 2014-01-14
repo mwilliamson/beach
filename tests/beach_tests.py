@@ -2,6 +2,7 @@ import contextlib
 import os
 
 from nose.tools import istest, nottest, assert_equal
+import funk
 import peachtree
 import spur
 import starboard
@@ -41,7 +42,7 @@ class BeachTests(object):
     @istest
     def can_deploy_standalone_script(self):
         with self._start_vm(public_ports=[8080]) as machine:
-            deployer = beach.Deployer(machine.root_shell())
+            deployer = beach.Deployer(machine.root_shell(), registry=None)
             app_path = os.path.join(os.path.dirname(__file__), "../example-apps/just-a-script")
             deployer.deploy(app_path, params={"port": "8080"})
             address = "http://{0}:{1}".format(machine.external_hostname(), machine.public_port(8080))
@@ -50,6 +51,29 @@ class BeachTests(object):
             time.sleep(5)
             response = requests.get(address)
             assert_equal("Hello", response.text)
+    
+    @istest
+    @funk.with_mocks
+    def can_deploy_script_with_dependency(self, mocks):
+        with self._start_vm(public_ports=[8080]) as machine:
+            registry = mocks.mock()
+            node_service = Service({"value": "I feel fine"})
+            funk.allows(registry).find_service("message").returns(node_service)
+            
+            deployer = beach.Deployer(machine.root_shell(), registry=registry)
+            app_path = os.path.join(os.path.dirname(__file__), "../example-apps/script-with-dependency")
+            deployer.deploy(app_path, params={"port": "8080"})
+            address = "http://{0}:{1}".format(machine.external_hostname(), machine.public_port(8080))
+            # TODO: remove sleep
+            import time
+            time.sleep(5)
+            response = requests.get(address)
+            assert_equal("I feel fine", response.text)
+
+
+class Service(object):
+    def __init__(self, provides):
+        self.provides = provides
 
 
 @istest

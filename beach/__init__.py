@@ -7,6 +7,7 @@ import contextlib
 import shutil
 import uuid
 import pipes
+import re
 
 
 class Deployer(object):
@@ -82,14 +83,15 @@ class Supervisor(object):
         self._run_script("install")
     
     def set_up(self, service_name, env, cwd, command):
-        env_update = "\n".join(
-            "{0}={1}".format(key, pipes.quote(value))
-            for key, value in env.items()
-        )
-        exec_command = "set -e\n{0}\ncd {1}\nexec {2}".format(
-            env_update, pipes.quote(cwd), command)
+        def replace_variable(matchobj):
+            return pipes.quote(env[matchobj.group(1)])
+        
+        substituted_command = re.sub(r"\$\{([^}]+)\}", replace_variable, command)
+        exec_command = "set -e\ncd {0}\nexec {1}".format(
+            pipes.quote(cwd), substituted_command)
         full_command = "set -e\nexec su {0} - -c sh -c {1}".format(
             service_name, pipes.quote(exec_command))
+        print full_command
         self._run_script(
             "create-service",
             {"service_name": service_name, "command": full_command},

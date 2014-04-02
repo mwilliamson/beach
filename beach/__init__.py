@@ -57,7 +57,13 @@ class Deployer(object):
         supervisor = Supervisor(self._shell, os.path.join("shell/supervisors/runit"))
         supervisor.install()
         command = app_config["service"]
-        supervisor.set_up(service_name, env=env, cwd=app_path, command=command)
+        
+        def replace_variable(matchobj):
+            return pipes.quote(env[matchobj.group(1)])
+        
+        substituted_command = re.sub(r"\$\{([^}]+)\}", replace_variable, command)
+        
+        supervisor.set_up(service_name, cwd=app_path, command=substituted_command)
         
     def _create_user_if_missing(self, username):
         if self._shell.run(["id", username], allow_error=True).return_code != 0:
@@ -90,13 +96,9 @@ class Supervisor(object):
     def install(self):
         self._run_script("install")
     
-    def set_up(self, service_name, env, cwd, command):
-        def replace_variable(matchobj):
-            return pipes.quote(env[matchobj.group(1)])
-        
-        substituted_command = re.sub(r"\$\{([^}]+)\}", replace_variable, command)
+    def set_up(self, service_name, cwd, command):
         exec_command = "set -e\ncd {0}\nexec {1}".format(
-            pipes.quote(cwd), substituted_command)
+            pipes.quote(cwd), command)
         full_command = "set -e\nexec su {0} - -c sh -c {1}".format(
             service_name, pipes.quote(exec_command))
         self._run_script(

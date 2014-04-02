@@ -8,6 +8,24 @@ import shutil
 import uuid
 import pipes
 import re
+import signal
+
+import spur
+
+
+_local = spur.LocalShell()
+
+
+class RunningApplication(object):
+    def __init__(self, process):
+        self._process = process
+    
+    def __enter__(self):
+        return self
+        
+    def __exit__(self, *args):
+        self._process.send_signal(signal.SIGTERM)
+        self._process.wait_for_result()
 
 
 class Deployer(object):
@@ -15,15 +33,21 @@ class Deployer(object):
         self._shell = shell
         self._registry = registry
     
+    def run(self, path, params):
+        app_config = self._read_app_config(path)
+        command = self._generate_command(params, app_config)
+        
+        process = _local.spawn(
+            ["sh", "-c", "exec {0}".format(command)],
+            cwd=path,
+            allow_error=True,
+        )
+        
+        return RunningApplication(process)
+    
     def deploy(self, path, params):
         app_config = self._read_app_config(path)
-        
-        # TODO: Read params from app config to ensure all are satisfied.
-        env = params.copy()
-        for dependency_name in app_config.get("dependencies", []):
-            service = self._registry.find_service(dependency_name)
-            for key, value in service.provides.items():
-                env["{0}.{1}".format(dependency_name, key)] = value
+        command = self._generate_command(params, app_config)
         
         service_name = "beach-{0}".format(app_config["name"])
         self._create_user_if_missing(service_name)
@@ -34,7 +58,24 @@ class Deployer(object):
         
         self._upload_dir(path, app_path)
         
-        self._set_up_service(service_name, app_config, app_path, env)
+        self._set_up_service(service_name, app_path, command)
+    
+    def _generate_command(self, params, app_config):
+        # TODO: Read params from app config to ensure all are satisfied.
+        env = params.copy()
+        for dependency_name in app_config.get("dependencies", []):
+            service = self._registry.find_service(dependency_name)
+            for key, value in service.provides.items():
+                env["{0}.{1}".format(dependency_name, key)] = value
+        
+        
+        command = app_config["service"]
+        
+        def replace_variable(matchobj):
+            return pipes.quote(env[matchobj.group(1)])
+        
+        return re.sub(r"\$\{([^}]+)\}", replace_variable, command)
+        
     
     def _upload_dir(self, local_path, remote_path):
         with self._create_temp_tarball(local_path) as local_tarball:
@@ -53,17 +94,10 @@ class Deployer(object):
         )
         self._shell.run(["rm", remote_tarball_path])
     
-    def _set_up_service(self, service_name, app_config, app_path, env):
+    def _set_up_service(self, service_name, app_path, command):
         supervisor = Supervisor(self._shell, os.path.join("shell/supervisors/runit"))
         supervisor.install()
-        command = app_config["service"]
-        
-        def replace_variable(matchobj):
-            return pipes.quote(env[matchobj.group(1)])
-        
-        substituted_command = re.sub(r"\$\{([^}]+)\}", replace_variable, command)
-        
-        supervisor.set_up(service_name, cwd=app_path, command=substituted_command)
+        supervisor.set_up(service_name, cwd=app_path, command=command)
         
     def _create_user_if_missing(self, username):
         if self._shell.run(["id", username], allow_error=True).return_code != 0:

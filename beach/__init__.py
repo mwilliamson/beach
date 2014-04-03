@@ -1,4 +1,3 @@
-import posixpath
 import os
 import json
 import pipes
@@ -80,9 +79,6 @@ class Deployer(object):
             beach_config = json.load(beach_config_file)
         return beach_config
     
-    def _path_join(self, *args):
-        return posixpath.join(*args)
-
 
 class Supervisor(object):
     def __init__(self, shell, scripts_dir):

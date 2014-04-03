@@ -6,7 +6,7 @@ import signal
 
 import spur
 
-from . import layouts
+from . import layouts, supervisors
 
 
 _local = spur.LocalShell()
@@ -25,10 +25,10 @@ class RunningApplication(object):
 
 
 class Deployer(object):
-    def __init__(self, shell, registry, layout):
-        self._shell = shell
+    def __init__(self, registry, layout, supervisor):
         self._registry = registry
         self._layout = layout
+        self._supervisor = supervisor
     
     def run(self, path, params):
         app_config = self._read_app_config(path)
@@ -69,42 +69,11 @@ class Deployer(object):
         return re.sub(r"\$\{([^}]+)\}", replace_variable, command)
     
     def _set_up_service(self, service_name, app_path, username, command):
-        supervisor = Supervisor(self._shell, os.path.join("shell/supervisors/runit"))
-        supervisor.install()
-        supervisor.set_up(service_name, cwd=app_path, username=username, command=command)
+        self._supervisor.install()
+        self._supervisor.set_up(service_name, cwd=app_path, username=username, command=command)
         
     
     def _read_app_config(self, path):
         with open(os.path.join(path, "beach.json")) as beach_config_file:
             beach_config = json.load(beach_config_file)
         return beach_config
-    
-
-class Supervisor(object):
-    def __init__(self, shell, scripts_dir):
-        self._shell = shell
-        self._scripts_dir = scripts_dir
-    
-    def install(self):
-        self._run_script("install")
-    
-    def set_up(self, service_name, cwd, username, command):
-        exec_command = "set -e\ncd {0}\nexec {1}".format(
-            pipes.quote(cwd), command)
-        full_command = "set -e\nexec su {0} - -c sh -c {1}".format(
-            username, pipes.quote(exec_command))
-        self._run_script(
-            "create-service",
-            {"service_name": service_name, "command": full_command},
-        )
-    
-    def _run_script(self, name, env={}):
-        self._shell.run(["sh", "-c", self._read_script(name)], update_env=env)
-    
-    def _read_script(self, name):
-        return _read_file(os.path.join(self._scripts_dir, name))
-        
-
-def _read_file(path):
-    with open(path) as f:
-        return f.read()

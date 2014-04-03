@@ -19,7 +19,7 @@ _local = spur.LocalShell()
 class BeachTests(object):
     @istest
     def can_run_standalone_script(self):
-        deployer = beach.Deployer(_local, registry=None, layout=None)
+        deployer = beach.Deployer(registry=None, layout=None, supervisor=None)
         app_path = _example_app_path("just-a-script")
         with deployer.run(app_path, params={"port": "58080"}):
             response = self._retry_http_get("http://localhost:58080")
@@ -32,7 +32,7 @@ class BeachTests(object):
         node_service = Service({"value": "I feel fine"})
         funk.allows(registry).find_service("message").returns(node_service)
             
-        deployer = beach.Deployer(_local, registry=registry, layout=None)
+        deployer = beach.Deployer(registry=registry, layout=None, supervisor=None)
         app_path = _example_app_path("script-with-dependency")
         with deployer.run(app_path, params={"port": "58080"}):
             response = self._retry_http_get("http://localhost:58080")
@@ -65,7 +65,11 @@ class BeachDeploymentTests(object):
     def can_deploy_standalone_script(self):
         with self._start_vm(public_ports=[8080]) as machine:
             shell = machine.root_shell()
-            deployer = beach.Deployer(shell, registry=None, layout=beach.layouts.UserPerService(shell))
+            deployer = beach.Deployer(
+                registry=None,
+                layout=beach.layouts.UserPerService(shell),
+                supervisor=beach.supervisors.runit(shell),
+            )
             app_path = _example_app_path("just-a-script")
             deployer.deploy(app_path, params={"port": "8080"})
             address = self._address(machine, 8080)
@@ -76,7 +80,11 @@ class BeachDeploymentTests(object):
     def redeploying_restarts_service(self):
         with self._start_vm(public_ports=[8080, 8081]) as machine:
             shell = machine.root_shell()
-            deployer = beach.Deployer(shell, registry=None, layout=beach.layouts.UserPerService(shell))
+            deployer = beach.Deployer(
+                registry=None,
+                layout=beach.layouts.UserPerService(shell),
+                supervisor=beach.supervisors.runit(shell),
+            )
             app_path = _example_app_path("just-a-script")
             
             deployer.deploy(app_path, params={"port": "8080"})

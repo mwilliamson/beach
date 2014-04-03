@@ -7,8 +7,25 @@ import tempfile
 import subprocess
 
 import spur
+import tempman
 
 _local = spur.LocalShell()
+
+
+class TemporaryLayout(object):
+    def __init__(self):
+        self._dir = tempman.create_temp_dir()
+    
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, *args):
+        self._dir.close()
+    
+    def upload_service(self, service_name, path):
+        destination = os.path.join(self._dir.path, service_name)
+        subprocess.check_call(["cp", "-rT", path, destination])
+        return destination, None
 
 
 class UserPerService(object):

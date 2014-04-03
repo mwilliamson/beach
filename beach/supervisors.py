@@ -1,10 +1,45 @@
 import os
 import pipes
+import signal
+
+import spur
 
 
 def runit(shell):
     return _supervisor(shell, "runit")
+
+
+def stop_on_exit():
+    return StopOnExit()
+
+
+class StopOnExit(object):
+    def __init__(self):
+        self._processes = []
     
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, *args):
+        for process in self._processes:
+            process.send_signal(signal.SIGTERM)
+            process.wait_for_result()
+    
+    def install(self):
+        pass
+    
+    def set_up(self, service_name, cwd, username, command):
+        if username is None:
+            shell = spur.LocalShell()
+            process = shell.spawn(
+                ["sh", "-c", "exec {0}".format(command)],
+                allow_error=True,
+                cwd=cwd,
+            )
+            self._processes.append(process)
+        else:
+            raise ValueError("username must be None")
+
 
 def _supervisor(shell, name):
     path = os.path.join(os.path.dirname(__file__), "../shell/supervisors/", name)

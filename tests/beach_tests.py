@@ -24,6 +24,20 @@ class BeachTests(object):
         with deployer.run(app_path, params={"port": "58080"}):
             response = self._retry_http_get("http://localhost:58080")
             assert_equal("Hello", response.text)
+            
+    @istest
+    def can_deploy_standalone_script(self):
+        with beach.layouts.TemporaryLayout() as layout:
+            with beach.supervisors.stop_on_exit() as supervisor:
+                deployer = beach.Deployer(
+                    registry=None,
+                    layout=layout,
+                    supervisor=supervisor,
+                )
+                app_path = _example_app_path("just-a-script")
+                deployer.deploy(app_path, params={"port": "58080"})
+                response = self._retry_http_get("http://localhost:58080")
+                assert_equal("Hello", response.text)
     
     @istest
     @funk.with_mocks

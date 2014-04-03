@@ -30,6 +30,7 @@ class StopOnExit(object):
     
     def set_up(self, service_name, cwd, username, command):
         if username is None:
+            # TODO: kill old process with old service_name, if any.
             shell = spur.LocalShell()
             process = shell.spawn(
                 ["sh", "-c", "exec {0}".format(command)],
@@ -55,6 +56,7 @@ class Supervisor(object):
         self._run_script("install")
     
     def set_up(self, service_name, cwd, username, command):
+        assert username is not None
         exec_command = "set -e\ncd {0}\nexec {1}".format(
             pipes.quote(cwd), command)
         full_command = "set -e\nexec su {0} - -c sh -c {1}".format(

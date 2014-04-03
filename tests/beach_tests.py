@@ -39,11 +39,15 @@ class BeachTests(object):
             assert_equal("I feel fine", response.text)
     
     def _retry_http_get(self, address):
-        return wait.retry(
-            lambda: requests.get(address),
-            error=requests.ConnectionError,
-            timeout=1,
-        )
+        return _retry_http_get(address, timeout=1)
+
+
+def _retry_http_get(address, timeout):
+    return wait.retry(
+        lambda: requests.get(address),
+        error=requests.ConnectionError,
+        timeout=timeout,
+    )
 
 
 @attr("slow")
@@ -64,10 +68,7 @@ class BeachDeploymentTests(object):
             app_path = os.path.join(os.path.dirname(__file__), "../example-apps/just-a-script")
             deployer.deploy(app_path, params={"port": "8080"})
             address = "http://{0}:{1}".format(machine.external_hostname(), machine.public_port(8080))
-            # TODO: remove sleep
-            import time
-            time.sleep(5)
-            response = requests.get(address)
+            response = self._retry_http_get(address)
             assert_equal("Hello", response.text)
     
     def _start_vm(self, **kwargs):
@@ -85,6 +86,9 @@ class BeachDeploymentTests(object):
         except:
             machine.destroy()
             raise
+    
+    def _retry_http_get(self, address):
+        return _retry_http_get(address, timeout=5)
 
 
 class Service(object):

@@ -1,7 +1,7 @@
 import contextlib
 import os
 
-from nose.tools import istest, nottest, assert_equal
+from nose.tools import istest, nottest, assert_equal, assert_raises
 from nose.plugins.attrib import attr
 import funk
 import peachtree
@@ -67,9 +67,30 @@ class BeachDeploymentTests(object):
             deployer = beach.Deployer(machine.root_shell(), registry=None)
             app_path = _example_app_path("just-a-script")
             deployer.deploy(app_path, params={"port": "8080"})
-            address = "http://{0}:{1}".format(machine.external_hostname(), machine.public_port(8080))
+            address = self._address(machine, 8080)
             response = self._retry_http_get(address)
             assert_equal("Hello", response.text)
+    
+    @istest
+    def redeploying_restarts_service(self):
+        with self._start_vm(public_ports=[8080, 8081]) as machine:
+            deployer = beach.Deployer(machine.root_shell(), registry=None)
+            app_path = _example_app_path("just-a-script")
+            
+            deployer.deploy(app_path, params={"port": "8080"})
+            first_address = self._address(machine, 8080)
+            response = self._retry_http_get(first_address)
+            assert_equal("Hello", response.text)
+            
+            deployer.deploy(app_path, params={"port": "8081"})
+            second_address = self._address(machine, 8081)
+            response = self._retry_http_get(first_address)
+            assert_equal("Hello", response.text)
+            assert_raises(requests.ConnectionError, lambda: requests.get(second_address))
+            
+            
+    def _address(self, machine, port):
+        return "http://{0}:{1}".format(machine.external_hostname(), machine.public_port(port))
     
     def _start_vm(self, **kwargs):
         provider = peachtree.qemu_provider()

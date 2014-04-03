@@ -10,6 +10,7 @@ import starboard
 import requests
 
 import beach
+from . import wait
 
 
 _local = spur.LocalShell()
@@ -21,10 +22,7 @@ class BeachTests(object):
         deployer = beach.Deployer(_local, registry=None)
         app_path = os.path.join(os.path.dirname(__file__), "../example-apps/just-a-script")
         with deployer.run(app_path, params={"port": "58080"}):
-            # TODO: remove sleep
-            import time
-            time.sleep(1)
-            response = requests.get("http://localhost:58080")
+            response = self._retry_http_get("http://localhost:58080")
             assert_equal("Hello", response.text)
     
     @istest
@@ -37,11 +35,15 @@ class BeachTests(object):
         deployer = beach.Deployer(_local, registry=registry)
         app_path = os.path.join(os.path.dirname(__file__), "../example-apps/script-with-dependency")
         with deployer.run(app_path, params={"port": "58080"}):
-            # TODO: remove sleep
-            import time
-            time.sleep(1)
-            response = requests.get("http://localhost:58080")
+            response = self._retry_http_get("http://localhost:58080")
             assert_equal("I feel fine", response.text)
+    
+    def _retry_http_get(self, address):
+        return wait.retry(
+            lambda: requests.get(address),
+            error=requests.ConnectionError,
+            timeout=1,
+        )
 
 
 @attr("slow")
@@ -93,3 +95,5 @@ class Service(object):
 @istest
 class BeachPrecise64Tests(BeachDeploymentTests):
     image_name = "ubuntu-precise-amd64"
+
+

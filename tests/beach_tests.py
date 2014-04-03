@@ -2,6 +2,7 @@ import contextlib
 import os
 
 from nose.tools import istest, nottest, assert_equal
+from nose.plugins.attrib import attr
 import funk
 import peachtree
 import spur
@@ -13,32 +14,8 @@ import beach
 
 _local = spur.LocalShell()
 
-@nottest
+@istest
 class BeachTests(object):
-    def _start_vm(self, **kwargs):
-        provider = peachtree.qemu_provider()
-        machine = provider.start(self.image_name, **kwargs)
-        try:
-            root_shell = machine.root_shell()
-            hostname = starboard.find_local_hostname()
-            # TODO: verify apt-cacher-ng is running
-            # TODO: verify that caching is working correctly
-            apt_config = 'Acquire::http::Proxy "http://{0}:3142";\n'.format(hostname)
-            with root_shell.open("/etc/apt/apt.conf.d/01-proxy-cache", "w") as config_file:
-                config_file.write(apt_config)
-            return machine
-        except:
-            machine.destroy()
-            raise
-    
-    @istest
-    def can_use_vm(self):
-        # Testing our test infrastructure
-        with self._start_vm() as machine:
-            shell = machine.shell()
-            result = shell.run(["echo", "hello"])
-            assert_equal("hello\n", result.output)
-    
     @istest
     def can_run_standalone_script(self):
         deployer = beach.Deployer(_local, registry=None)
@@ -65,6 +42,18 @@ class BeachTests(object):
             time.sleep(1)
             response = requests.get("http://localhost:58080")
             assert_equal("I feel fine", response.text)
+
+
+@attr("slow")
+@nottest
+class BeachDeploymentTests(object):
+    @istest
+    def can_use_vm(self):
+        # Testing our test infrastructure
+        with self._start_vm() as machine:
+            shell = machine.shell()
+            result = shell.run(["echo", "hello"])
+            assert_equal("hello\n", result.output)
     
     @istest
     def can_deploy_standalone_script(self):
@@ -78,6 +67,22 @@ class BeachTests(object):
             time.sleep(5)
             response = requests.get(address)
             assert_equal("Hello", response.text)
+    
+    def _start_vm(self, **kwargs):
+        provider = peachtree.qemu_provider()
+        machine = provider.start(self.image_name, **kwargs)
+        try:
+            root_shell = machine.root_shell()
+            hostname = starboard.find_local_hostname()
+            # TODO: verify apt-cacher-ng is running
+            # TODO: verify that caching is working correctly
+            apt_config = 'Acquire::http::Proxy "http://{0}:3142";\n'.format(hostname)
+            with root_shell.open("/etc/apt/apt.conf.d/01-proxy-cache", "w") as config_file:
+                config_file.write(apt_config)
+            return machine
+        except:
+            machine.destroy()
+            raise
 
 
 class Service(object):
@@ -86,5 +91,5 @@ class Service(object):
 
 
 @istest
-class BeachPrecise64Tests(BeachTests):
+class BeachPrecise64Tests(BeachDeploymentTests):
     image_name = "ubuntu-precise-amd64"

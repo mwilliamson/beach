@@ -1,0 +1,8 @@
+{
+    "name": "script",
+    "require": {
+        "port": "param"
+    },
+    "install": "echo 'I feel fine' > message",
+    "service": "./server.py ${port}"
+}

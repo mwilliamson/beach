@@ -15,6 +15,7 @@ _local = spur.LocalShell()
 class TemporaryLayout(object):
     def __init__(self):
         self._dir = tempman.create_temp_dir()
+        self.run = _local.run
     
     def __enter__(self):
         return self
@@ -31,6 +32,7 @@ class TemporaryLayout(object):
 class UserPerService(object):
     def __init__(self, shell):
         self._shell = shell
+        self.run = shell.run
     
     def upload_service(self, service_name, path):
         self._create_user_if_missing(service_name)

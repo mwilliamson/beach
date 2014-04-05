@@ -32,7 +32,7 @@ class Deployer(object):
     
     def run(self, path, params):
         app_config = self._read_app_config(path)
-        command = self._generate_command(params, app_config)
+        command = self._generate_command("service", params, app_config)
         
         process = _local.spawn(
             ["sh", "-c", "exec {0}".format(command)],
@@ -44,15 +44,22 @@ class Deployer(object):
     
     def deploy(self, path, params):
         app_config = self._read_app_config(path)
-        command = self._generate_command(params, app_config)
+        service_command = self._generate_command("service", params, app_config)
+        install_command = self._generate_command("install", params, app_config)
         
         service_name = "beach-{0}".format(app_config["name"])
         
         app_path, username = self._layout.upload_service(service_name, path)
+        if install_command is not None:
+            self._layout.run(["sh", "-c", install_command], cwd=app_path)
         
-        self._set_up_service(service_name, app_path, username, command)
+        self._set_up_service(service_name, app_path, username, service_command)
     
-    def _generate_command(self, params, app_config):
+    def _generate_command(self, command_name, params, app_config):
+        command = app_config.get(command_name)
+        if command is None:
+            return None
+        
         # TODO: Read params from app config to ensure all are satisfied.
         env = params.copy()
         for dependency_name in app_config.get("dependencies", []):
@@ -61,7 +68,6 @@ class Deployer(object):
                 env["{0}.{1}".format(dependency_name, key)] = value
         
         
-        command = app_config["service"]
         
         def replace_variable(matchobj):
             return pipes.quote(env[matchobj.group(1)])

@@ -21,6 +21,9 @@ class StopOnExit(object):
         return self
     
     def __exit__(self, *args):
+        self.close()
+        
+    def close(self):
         for process in self._processes:
             process.send_signal(signal.SIGTERM)
             process.wait_for_result()

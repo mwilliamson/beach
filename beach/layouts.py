@@ -21,6 +21,9 @@ class TemporaryLayout(object):
         return self
     
     def __exit__(self, *args):
+        self.close()
+    
+    def close(self):
         self._dir.close()
     
     def upload_service(self, service_name, path):

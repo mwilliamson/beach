@@ -15,35 +15,39 @@ from . import wait
 
 _local = spur.LocalShell()
 
-@istest
+@nottest
 class BeachTests(object):
+    def __init__(self):
+        self.supervisor = self.create_supervisor()
+        self.layout = self.create_layout()
+        self._resources = [self.layout, self.supervisor]
+        
+    def teardown(self):
+        while len(self._resources) > 0:
+            self._resources.pop().close()
+        
+    def deployer(self, registry):
+        return beach.Deployer(
+            registry=registry,
+            layout=self.layout,
+            supervisor=self.supervisor,
+        )
+    
     @istest
     def can_deploy_standalone_script(self):
-        with beach.layouts.TemporaryLayout() as layout:
-            with beach.supervisors.stop_on_exit() as supervisor:
-                deployer = beach.Deployer(
-                    registry=None,
-                    layout=layout,
-                    supervisor=supervisor,
-                )
-                app_path = _example_app_path("just-a-script")
-                deployer.deploy(app_path, params={"port": "58080"})
-                response = self._retry_http_get("http://localhost:58080")
-                assert_equal("Hello", response.text)
+        deployer = self.deployer(registry=None)
+        app_path = _example_app_path("just-a-script")
+        deployer.deploy(app_path, params={"port": "58080"})
+        response = self._retry_http_get("http://localhost:58080")
+        assert_equal("Hello", response.text)
             
     @istest
     def can_deploy_script_with_installation(self):
-        with beach.layouts.TemporaryLayout() as layout:
-            with beach.supervisors.stop_on_exit() as supervisor:
-                deployer = beach.Deployer(
-                    registry=None,
-                    layout=layout,
-                    supervisor=supervisor,
-                )
-                app_path = _example_app_path("script-with-install")
-                deployer.deploy(app_path, params={"port": "58080"})
-                response = self._retry_http_get("http://localhost:58080")
-                assert_equal("I feel fine\n", response.text)
+        deployer = self.deployer(registry=None)
+        app_path = _example_app_path("script-with-install")
+        deployer.deploy(app_path, params={"port": "58080"})
+        response = self._retry_http_get("http://localhost:58080")
+        assert_equal("I feel fine\n", response.text)
     
     @istest
     @funk.with_mocks
@@ -52,16 +56,23 @@ class BeachTests(object):
         node_service = Service({"value": "I feel fine"})
         funk.allows(registry).find_service("message").returns(node_service)
             
-        with beach.layouts.TemporaryLayout() as layout:
-            with beach.supervisors.stop_on_exit() as supervisor:
-                deployer = beach.Deployer(registry=registry, layout=layout, supervisor=supervisor)
-                app_path = _example_app_path("script-with-dependency")
-                deployer.deploy(app_path, params={"port": "58080"})
-                response = self._retry_http_get("http://localhost:58080")
-                assert_equal("I feel fine", response.text)
+        deployer = self.deployer(registry=registry)
+        app_path = _example_app_path("script-with-dependency")
+        deployer.deploy(app_path, params={"port": "58080"})
+        response = self._retry_http_get("http://localhost:58080")
+        assert_equal("I feel fine", response.text)
     
     def _retry_http_get(self, address):
         return _retry_http_get(address, timeout=1)
+
+
+@istest
+class TemporaryDeploymentTests(BeachTests):
+    def create_supervisor(self):
+        return beach.supervisors.stop_on_exit()
+    
+    def create_layout(self):
+        return beach.layouts.TemporaryLayout()
 
 
 def _retry_http_get(address, timeout):

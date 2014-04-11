@@ -69,6 +69,20 @@ class BeachTests(object):
         response = self._retry_http_get(port=58080, path="/")
         assert_equal("I feel fine", response.text)
     
+    @istest
+    def redeploying_restarts_service(self):
+        deployer = self.deployer(registry=None)
+        app_path = _example_app_path("just-a-script")
+        
+        deployer.deploy(app_path, params={"port": "58080"})
+        response = self._retry_http_get(port=58080, path="/")
+        assert_equal("Hello", response.text)
+        
+        deployer.deploy(app_path, params={"port": "58081"})
+        response = self._retry_http_get(port=58081, path="/")
+        assert_equal("Hello", response.text)
+        assert_raises(requests.ConnectionError, lambda: requests.get(self.http_address(58080, "/")))
+    
     def _retry_http_get(self, port, path):
         address = self.http_address(port=port, path=path)
         return _retry_http_get(address, timeout=self.http_timeout)
@@ -118,20 +132,6 @@ class ProductionDeploymentTests(BeachTests):
         shell = self._machine.shell()
         result = shell.run(["echo", "hello"])
         assert_equal("hello\n", result.output)
-    
-    @istest
-    def redeploying_restarts_service(self):
-        deployer = self.deployer(registry=None)
-        app_path = _example_app_path("just-a-script")
-        
-        deployer.deploy(app_path, params={"port": "58080"})
-        response = self._retry_http_get(port=58080, path="/")
-        assert_equal("Hello", response.text)
-        
-        deployer.deploy(app_path, params={"port": "58081"})
-        response = self._retry_http_get(port=58081, path="/")
-        assert_equal("Hello", response.text)
-        assert_raises(requests.ConnectionError, lambda: requests.get(self.http_address(58080, "/")))
         
         
     def http_address(self, port, path):

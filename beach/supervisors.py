@@ -15,28 +15,34 @@ def stop_on_exit():
 
 class StopOnExit(object):
     def __init__(self):
-        self._processes = []
+        self._processes = {}
     
     def close(self):
-        for process in self._processes:
-            process.send_signal(signal.SIGTERM)
-            process.wait_for_result()
+        for process in self._processes.values():
+            self._kill(process)
     
     def install(self):
         pass
     
     def set_up(self, service_name, cwd, username, command):
         if username is None:
-            # TODO: kill old process with old service_name, if any.
+            existing_process = self._processes.get(service_name)
+            if existing_process is not None:
+                self._kill(existing_process)
+            
             shell = spur.LocalShell()
             process = shell.spawn(
                 ["sh", "-c", "exec {0}".format(command)],
                 allow_error=True,
                 cwd=cwd,
             )
-            self._processes.append(process)
+            self._processes[service_name] = process
         else:
             raise ValueError("username must be None")
+    
+    def _kill(self, process):
+        process.send_signal(signal.SIGTERM)
+        process.wait_for_result()
 
 
 def _supervisor(shell, name):

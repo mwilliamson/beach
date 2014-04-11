@@ -1,5 +1,8 @@
 #!/usr/bin/env sh
 
+sv status "${service_name}"
+IS_ALREADY_RUNNING="$?"
+
 set -e
 
 service_path="/etc/sv/${service_name}"
@@ -12,3 +15,7 @@ echo "${run_contents}" > "${service_run_path}"
 chmod +x "${service_run_path}"
 
 ln -sfT "${service_path}" "/etc/service/${service_name}"
+
+if [ "$IS_ALREADY_RUNNING" -eq 0 ]; then
+    sv restart "${service_name}"
+fi

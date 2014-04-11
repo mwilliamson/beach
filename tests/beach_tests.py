@@ -127,9 +127,9 @@ class BeachDeploymentTests(object):
             
             deployer.deploy(app_path, params={"port": "8081"})
             second_address = self._address(machine, 8081)
-            response = self._retry_http_get(first_address)
+            response = self._retry_http_get(second_address)
             assert_equal("Hello", response.text)
-            assert_raises(requests.ConnectionError, lambda: requests.get(second_address))
+            assert_raises(requests.ConnectionError, lambda: requests.get(first_address))
             
             
     def _address(self, machine, port):

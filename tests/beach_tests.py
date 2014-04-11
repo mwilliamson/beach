@@ -18,14 +18,6 @@ _local = spur.LocalShell()
 @istest
 class BeachTests(object):
     @istest
-    def can_run_standalone_script(self):
-        deployer = beach.Deployer(registry=None, layout=None, supervisor=None)
-        app_path = _example_app_path("just-a-script")
-        with deployer.run(app_path, params={"port": "58080"}):
-            response = self._retry_http_get("http://localhost:58080")
-            assert_equal("Hello", response.text)
-            
-    @istest
     def can_deploy_standalone_script(self):
         with beach.layouts.TemporaryLayout() as layout:
             with beach.supervisors.stop_on_exit() as supervisor:
@@ -55,16 +47,18 @@ class BeachTests(object):
     
     @istest
     @funk.with_mocks
-    def can_run_script_with_dependency(self, mocks):
+    def can_deploy_script_with_dependency(self, mocks):
         registry = mocks.mock()
         node_service = Service({"value": "I feel fine"})
         funk.allows(registry).find_service("message").returns(node_service)
             
-        deployer = beach.Deployer(registry=registry, layout=None, supervisor=None)
-        app_path = _example_app_path("script-with-dependency")
-        with deployer.run(app_path, params={"port": "58080"}):
-            response = self._retry_http_get("http://localhost:58080")
-            assert_equal("I feel fine", response.text)
+        with beach.layouts.TemporaryLayout() as layout:
+            with beach.supervisors.stop_on_exit() as supervisor:
+                deployer = beach.Deployer(registry=registry, layout=layout, supervisor=supervisor)
+                app_path = _example_app_path("script-with-dependency")
+                deployer.deploy(app_path, params={"port": "58080"})
+                response = self._retry_http_get("http://localhost:58080")
+                assert_equal("I feel fine", response.text)
     
     def _retry_http_get(self, address):
         return _retry_http_get(address, timeout=1)

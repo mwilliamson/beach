@@ -30,18 +30,6 @@ class Deployer(object):
         self._layout = layout
         self._supervisor = supervisor
     
-    def run(self, path, params):
-        app_config = self._read_app_config(path)
-        command = self._generate_command("service", params, app_config)
-        
-        process = _local.spawn(
-            ["sh", "-c", "exec {0}".format(command)],
-            cwd=path,
-            allow_error=True,
-        )
-        
-        return RunningApplication(process)
-    
     def deploy(self, path, params):
         app_config = self._read_app_config(path)
         service_command = self._generate_command("service", params, app_config)

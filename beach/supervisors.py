@@ -17,12 +17,6 @@ class StopOnExit(object):
     def __init__(self):
         self._processes = []
     
-    def __enter__(self):
-        return self
-    
-    def __exit__(self, *args):
-        self.close()
-        
     def close(self):
         for process in self._processes:
             process.send_signal(signal.SIGTERM)
@@ -54,6 +48,9 @@ class Supervisor(object):
     def __init__(self, shell, scripts_dir):
         self._shell = shell
         self._scripts_dir = scripts_dir
+    
+    def close(self):
+        pass
     
     def install(self):
         self._run_script("install")

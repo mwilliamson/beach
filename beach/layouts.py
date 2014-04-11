@@ -17,12 +17,6 @@ class TemporaryLayout(object):
         self._dir = tempman.create_temp_dir()
         self.run = _local.run
     
-    def __enter__(self):
-        return self
-    
-    def __exit__(self, *args):
-        self.close()
-    
     def close(self):
         self._dir.close()
     
@@ -36,6 +30,9 @@ class UserPerService(object):
     def __init__(self, shell):
         self._shell = shell
         self.run = shell.run
+    
+    def close(self):
+        pass
     
     def upload_service(self, service_name, path):
         self._create_user_if_missing(service_name)

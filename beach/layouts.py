@@ -9,10 +9,12 @@ import subprocess
 import spur
 import tempman
 
+from . import contexts
+
 _local = spur.LocalShell()
 
 
-class TemporaryLayout(object):
+class TemporaryLayout(contexts.Closeable):
     def __init__(self):
         self._dir = tempman.create_temp_dir()
         self.run = _local.run

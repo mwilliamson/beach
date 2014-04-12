@@ -1,1 +1,62 @@
+#!/usr/bin/env python
 
+import argparse
+import json
+import time
+
+import beach
+
+
+def main():
+    _commands = [DeployCommand()]
+    
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers()
+    
+    for command in _commands:
+        subparser = subparsers.add_parser(command.name)
+        subparser.set_defaults(func=command.execute)
+        command.create_parser(subparser)
+    
+    args = parser.parse_args()
+    args.func(args)
+    
+    return parser.parse_args()
+
+
+class DeployCommand(object):
+    name = "deploy"
+    
+    def create_parser(self, parser):
+        parser.add_argument("app_path", metavar="app-path")
+        parser.add_argument("--config", "-c", required=True)
+    
+    def execute(self, args):
+        app_path = args.app_path
+        config_path = args.config
+        
+        with open(config_path) as config_file:
+            config = json.load(config_file)
+        
+        with beach.supervisors.stop_on_exit() as supervisor:
+            with beach.layouts.TemporaryLayout() as layout:
+                deployer = beach.Deployer(
+                    supervisor=supervisor,
+                    layout=layout,
+                    registry=None,
+                )
+        
+                params = config["params"]
+                
+                deployer.deploy(app_path, params=params)
+                
+                try:
+                    while True:
+                        time.sleep(0.1)
+                except KeyboardInterrupt:
+                    return
+
+
+
+if __name__ == "__main__":
+    main()

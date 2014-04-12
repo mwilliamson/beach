@@ -1,5 +1,4 @@
 import contextlib
-import os
 
 from nose.tools import istest, nottest, assert_equal, assert_raises
 from nose.plugins.attrib import attr
@@ -10,7 +9,7 @@ import starboard
 import requests
 
 import beach
-from . import wait
+from . import testing
 
 
 _local = spur.LocalShell()
@@ -43,7 +42,7 @@ class BeachTests(object):
     @istest
     def can_deploy_standalone_script(self):
         deployer = self.deployer(registry=None)
-        app_path = _example_app_path("just-a-script")
+        app_path = testing.example_app_path("just-a-script")
         deployer.deploy(app_path, params={"port": "58080"})
         response = self._retry_http_get(port=58080, path="/")
         assert_equal("Hello", response.text)
@@ -51,7 +50,7 @@ class BeachTests(object):
     @istest
     def can_deploy_script_with_installation(self):
         deployer = self.deployer(registry=None)
-        app_path = _example_app_path("script-with-install")
+        app_path = testing.example_app_path("script-with-install")
         deployer.deploy(app_path, params={"port": "58080"})
         response = self._retry_http_get(port=58080, path="/")
         assert_equal("I feel fine\n", response.text)
@@ -64,7 +63,7 @@ class BeachTests(object):
         funk.allows(registry).find_service("message").returns(node_service)
             
         deployer = self.deployer(registry=registry)
-        app_path = _example_app_path("script-with-dependency")
+        app_path = testing.example_app_path("script-with-dependency")
         deployer.deploy(app_path, params={"port": "58080"})
         response = self._retry_http_get(port=58080, path="/")
         assert_equal("I feel fine", response.text)
@@ -72,7 +71,7 @@ class BeachTests(object):
     @istest
     def redeploying_restarts_service(self):
         deployer = self.deployer(registry=None)
-        app_path = _example_app_path("just-a-script")
+        app_path = testing.example_app_path("just-a-script")
         
         deployer.deploy(app_path, params={"port": "58080"})
         response = self._retry_http_get(port=58080, path="/")
@@ -85,7 +84,7 @@ class BeachTests(object):
     
     def _retry_http_get(self, port, path):
         address = self.http_address(port=port, path=path)
-        return _retry_http_get(address, timeout=self.http_timeout)
+        return testing.retry_http_get(address, timeout=self.http_timeout)
 
 
 @istest
@@ -100,14 +99,6 @@ class TemporaryDeploymentTests(BeachTests):
     
     def http_address(self, port, path):
         return "http://localhost:{0}{1}".format(port, path)
-
-
-def _retry_http_get(address, timeout):
-    return wait.retry(
-        lambda: requests.get(address),
-        error=requests.ConnectionError,
-        timeout=timeout,
-    )
 
 
 @attr("slow")
@@ -166,8 +157,4 @@ class Service(object):
 @istest
 class ProductionDeploymentPrecise64Tests(ProductionDeploymentTests):
     image_name = "ubuntu-precise-amd64"
-
-
-def _example_app_path(name):
-    return os.path.join(os.path.dirname(__file__), "../example-apps", name)
 

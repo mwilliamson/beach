@@ -4,6 +4,8 @@ import signal
 
 import spur
 
+from . import contexts
+
 
 def runit(shell):
     return _supervisor(shell, "runit")
@@ -13,7 +15,7 @@ def stop_on_exit():
     return StopOnExit()
 
 
-class StopOnExit(object):
+class StopOnExit(contexts.Closeable):
     def __init__(self):
         self._processes = {}
     

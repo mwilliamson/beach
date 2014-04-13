@@ -35,9 +35,14 @@ class FileRegistry(object):
             try:
                 return json.load(registry_file)
             except ValueError:
-                # TODO: assert registry file is empty (otherwise raise error)
-                return {}
-        
+                registry_file.seek(0)
+                if self._is_empty_file(registry_file):
+                    return {}
+                else:
+                    raise ValueError("Registry file was not valid JSON")
+    
+    def _is_empty_file(self, fileobj):
+        return fileobj.read().strip() == ""
 
 
 def _read_service(service_json):

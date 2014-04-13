@@ -38,3 +38,13 @@ class FileRegistryTests(RegistryTests):
     
     def teardown(self):
         self._registry_file.close()
+    
+    @istest
+    def error_if_registry_file_is_badly_formatted(self):
+        self._registry_file.write("!!!")
+        self._registry_file.flush()
+        try:
+            self.registry.find_service("node-0.10")
+            assert False, "Expected ValueError"
+        except ValueError as error:
+            assert_equal("Registry file was not valid JSON", str(error))

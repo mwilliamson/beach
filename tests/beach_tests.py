@@ -26,22 +26,23 @@ class BeachTests(object):
     def setup(self):
         self.layout = self.create_layout()
         self.supervisor = self.create_supervisor()
+        self.registry = self.create_registry()
         self.add_cleanup(self.layout.close, self.supervisor.close)
         
     def teardown(self):
         while len(self._cleanup) > 0:
             self._cleanup.pop()()
         
-    def deployer(self, registry):
+    def deployer(self):
         return beach.Deployer(
-            registry=registry,
+            registry=self.registry,
             layout=self.layout,
             supervisor=self.supervisor,
         )
     
     @istest
     def can_deploy_standalone_script(self):
-        deployer = self.deployer(registry=None)
+        deployer = self.deployer()
         app_path = testing.example_app_path("just-a-script")
         deployer.deploy(app_path, params={"port": "58080"})
         response = self._retry_http_get(port=58080, path="/")
@@ -49,7 +50,7 @@ class BeachTests(object):
             
     @istest
     def can_deploy_script_with_installation(self):
-        deployer = self.deployer(registry=None)
+        deployer = self.deployer()
         app_path = testing.example_app_path("script-with-install")
         deployer.deploy(app_path, params={"port": "58080"})
         response = self._retry_http_get(port=58080, path="/")
@@ -58,11 +59,8 @@ class BeachTests(object):
     @istest
     @funk.with_mocks
     def can_deploy_script_with_dependency(self, mocks):
-        registry = mocks.mock()
-        node_service = Service({"value": "I feel fine"})
-        funk.allows(registry).find_service("message").returns(node_service)
-            
-        deployer = self.deployer(registry=registry)
+        self.registry.register("message", provides={"value": "I feel fine"})
+        deployer = self.deployer()
         app_path = testing.example_app_path("script-with-dependency")
         deployer.deploy(app_path, params={"port": "58080"})
         response = self._retry_http_get(port=58080, path="/")
@@ -70,7 +68,7 @@ class BeachTests(object):
     
     @istest
     def redeploying_restarts_service(self):
-        deployer = self.deployer(registry=None)
+        deployer = self.deployer()
         app_path = testing.example_app_path("just-a-script")
         
         deployer.deploy(app_path, params={"port": "58080"})
@@ -97,6 +95,9 @@ class TemporaryDeploymentTests(BeachTests):
     def create_layout(self):
         return beach.layouts.TemporaryLayout()
     
+    def create_registry(self):
+        return beach.registries.InMemoryRegistry()
+    
     def http_address(self, port, path):
         return "http://localhost:{0}{1}".format(port, path)
 
@@ -116,6 +117,12 @@ class ProductionDeploymentTests(BeachTests):
     
     def create_layout(self):
         return beach.layouts.UserPerService(self._machine.root_shell())
+    
+    def create_registry(self):
+        return beach.registries.FileRegistry(
+            self._machine.root_shell(),
+            "/root/beach-registry.json",
+        )
     
     @istest
     def can_use_vm(self):
@@ -147,11 +154,6 @@ class ProductionDeploymentTests(BeachTests):
         except:
             machine.destroy()
             raise
-
-
-class Service(object):
-    def __init__(self, provides):
-        self.provides = provides
 
 
 @istest

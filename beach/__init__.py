@@ -6,7 +6,7 @@ import signal
 
 import spur
 
-from . import layouts, supervisors
+from . import layouts, supervisors, registries
 
 
 _local = spur.LocalShell()

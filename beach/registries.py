@@ -18,14 +18,26 @@ class FileRegistry(object):
         self._path = path
     
     def register(self, name, provides):
-        # TODO: don't overwrite existing services
+        registry_json = self._read_registry()
+        registry_json[name] = {"provides": provides}
         with self._shell.open(self._path, "w") as registry_file:
-            json.dump({name: {"provides": provides}}, registry_file)
+            json.dump(registry_json, registry_file)
     
     def find_service(self, name):
-        with self._shell.open(self._path) as registry_file:
-            registry_json = json.load(registry_file)
-            return _read_service(registry_json[name])
+        service_json = self._read_registry().get(name)
+        if service_json is None:
+            return None
+        else:
+            return _read_service(service_json)
+    
+    def _read_registry(self):
+        with self._shell.open(self._path, "r") as registry_file:
+            try:
+                return json.load(registry_file)
+            except ValueError:
+                # TODO: assert registry file is empty (otherwise raise error)
+                return {}
+        
 
 
 def _read_service(service_json):

@@ -18,7 +18,7 @@ def can_deploy_temporarily_using_cli():
     config = {"params": params}
     
     with tempfile.NamedTemporaryFile() as config_file:
-        config_file.write(json.dumps(config))
+        json.dump(config, config_file)
         config_file.flush()
     
         process = _local.spawn([

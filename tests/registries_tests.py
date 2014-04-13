@@ -33,7 +33,7 @@ class InMemoryRegistryTests(RegistryTests):
 @istest
 class FileRegistryTests(RegistryTests):
     def setup(self):
-        self._registry_file = tempfile.NamedTemporaryFile()
+        self._registry_file = tempfile.NamedTemporaryFile("w")
         self.registry = registries.FileRegistry(spur.LocalShell(), self._registry_file.name)
     
     def teardown(self):

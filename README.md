@@ -3,7 +3,10 @@
 A tool for deploying applications.
 Meant for fun rather than production use.
 
-# Tests
+Beach currently ignores plenty of problems (such as locking files),
+meaning that usage in production is inadvisable.
+
+## Tests
 
 Run `make tests` to run the tests.
 

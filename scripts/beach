@@ -4,11 +4,13 @@ import argparse
 import json
 import time
 
+import spur
+
 import beach
 
 
 def main():
-    _commands = [DeployCommand()]
+    _commands = [DeployCommand(), RegisterCommand()]
     
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()
@@ -29,14 +31,11 @@ class DeployCommand(object):
     
     def create_parser(self, parser):
         parser.add_argument("app_path", metavar="app-path")
-        parser.add_argument("--config", "-c", required=True)
+        _add_config_arg(parser)
     
     def execute(self, args):
         app_path = args.app_path
-        config_path = args.config
-        
-        with open(config_path) as config_file:
-            config = json.load(config_file)
+        config = _read_config(args)
         
         with beach.supervisors.stop_on_exit() as supervisor:
             with beach.layouts.TemporaryLayout() as layout:
@@ -56,6 +55,41 @@ class DeployCommand(object):
                 except KeyboardInterrupt:
                     return
 
+
+class RegisterCommand(object):
+    name = "register"
+    
+    def create_parser(self, parser):
+        parser.add_argument("name")
+        _add_config_arg(parser)
+        parser.add_argument("--provide", "-p", action="append", default=[])
+    
+    def execute(self, args):
+        registry = _read_registry_arg(args)
+        
+        provides = dict(
+            provide.split("=", 1)
+            for provide in args.provide
+        )
+        
+        registry.register(args.name, provides)
+
+
+def _read_registry_arg(args):
+    config = _read_config(args)
+    return beach.registries.FileRegistry(spur.LocalShell(), config["registry"]["file"])
+
+
+def _read_config(args):
+    config_path = args.config
+    
+    with open(config_path) as config_file:
+        return json.load(config_file)
+
+
+def _add_config_arg(parser):
+    parser.add_argument("--config", "-c", required=True)
+    
 
 
 if __name__ == "__main__":

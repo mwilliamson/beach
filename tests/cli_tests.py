@@ -53,3 +53,24 @@ def can_register_services_using_cli():
         registry = beach.registries.FileRegistry(_local, registry_file.name)
         service = registry.find_service("node-0.10")
         assert_equal("/opt/node-0.10.2/", service.provides["path"])
+    
+
+@istest
+def can_deregister_services_using_cli():
+    with tempfile.NamedTemporaryFile() as registry_file:
+        registry = beach.registries.FileRegistry(_local, registry_file.name)
+        registry.register("node-0.10", provides={})
+        
+        config = {"registry": {"file": registry_file.name}}
+        
+        with tempfile.NamedTemporaryFile() as config_file:
+            json.dump(config, config_file)
+            config_file.flush()
+        
+            _local.run([
+                "beach", "deregister",
+                "node-0.10",
+                "-c", config_file.name
+            ])
+            
+        assert_equal(None, registry.find_service("node-0.10"))

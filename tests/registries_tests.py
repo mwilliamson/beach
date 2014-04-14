@@ -22,6 +22,13 @@ class RegistryTests(object):
         self.registry.register("node-0.10", provides={})
         self.registry.register("node-0.8", provides={})
         assert self.registry.find_service("node-0.10") is not None
+    
+    @istest
+    def cannot_find_service_after_deregistration(self):
+        self.registry.register("node-0.10", provides={})
+        assert self.registry.find_service("node-0.10") is not None 
+        self.registry.deregister("node-0.10")
+        assert self.registry.find_service("node-0.10") is None
 
 
 @istest

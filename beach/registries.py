@@ -8,6 +8,9 @@ class InMemoryRegistry(object):
     def register(self, name, provides):
         self._services[name] = Service(provides)
     
+    def deregister(self, name):
+        del self._services[name]
+    
     def find_service(self, name):
         return self._services.get(name)
 
@@ -20,8 +23,12 @@ class FileRegistry(object):
     def register(self, name, provides):
         registry_json = self._read_registry()
         registry_json[name] = {"provides": provides}
-        with self._shell.open(self._path, "w") as registry_file:
-            json.dump(registry_json, registry_file)
+        self._write_registry(registry_json)
+    
+    def deregister(self, name):
+        registry_json = self._read_registry()
+        del registry_json[name]
+        self._write_registry(registry_json)
     
     def find_service(self, name):
         service_json = self._read_registry().get(name)
@@ -29,6 +36,10 @@ class FileRegistry(object):
             return None
         else:
             return _read_service(service_json)
+            
+    def _write_registry(self, registry_json):
+        with self._shell.open(self._path, "w") as registry_file:
+            json.dump(registry_json, registry_file)
     
     def _read_registry(self):
         with self._shell.open(self._path, "r") as registry_file:

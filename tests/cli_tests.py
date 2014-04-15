@@ -55,7 +55,7 @@ def can_deploy_temporarily_using_cli_with_params_passed_on_command_line():
 @istest
 def can_register_services_using_cli():
     with tempfile.NamedTemporaryFile() as registry_file:
-        config = {"registry": {"file": registry_file.name}}
+        config = {"registry": {"path": registry_file.name}}
         
         with tempfile.NamedTemporaryFile() as config_file:
             json.dump(config, config_file)
@@ -78,7 +78,7 @@ def can_deregister_services_using_cli():
         registry = beach.registries.FileRegistry(_local, registry_file.name)
         registry.register("node-0.10", provides={})
         
-        config = {"registry": {"file": registry_file.name}}
+        config = {"registry": {"path": registry_file.name}}
         
         with tempfile.NamedTemporaryFile() as config_file:
             json.dump(config, config_file)

@@ -85,7 +85,7 @@ class DeregisterCommand(object):
 
 def _read_registry_arg(args):
     config = _read_config(args)
-    return beach.registries.FileRegistry(spur.LocalShell(), config["registry"]["file"])
+    return beach.registries.FileRegistry(spur.LocalShell(), config["registry"]["path"])
 
 
 def _read_config(args):

@@ -4,6 +4,7 @@ import json
 
 import spur
 from nose.tools import istest, assert_equal
+from nose.plugins.attrib import attr
 
 from . import testing
 import beach
@@ -99,3 +100,35 @@ def can_deregister_services_using_cli():
             ])
             
         assert_equal(None, registry.find_service("node-0.10"))
+
+
+@attr("slow")
+@istest
+def can_register_services_remotely_using_cli():
+    with testing.start_vm("ubuntu-precise-amd64") as machine:
+        target_ssh_config = machine.ssh_config(username="root")
+        config = {
+            "registry": {
+                "protocol": "ssh",
+                "hostname": target_ssh_config.hostname,
+                "port": target_ssh_config.port,
+                "username": target_ssh_config.user,
+                "password": target_ssh_config.password,
+                "path": "/root/beach-registry",
+            },
+        }
+        
+        with tempfile.NamedTemporaryFile() as config_file:
+            json.dump(config, config_file)
+            config_file.flush()
+        
+            _local.run([
+                "beach", "register",
+                "node-0.10", "-ppath=/opt/node-0.10.2/",
+                "-c", config_file.name
+            ])
+        
+        with machine.root_shell() as target_shell:
+            registry = beach.registries.FileRegistry(target_shell, "/root/beach-registry")
+            service = registry.find_service("node-0.10")
+            assert_equal("/opt/node-0.10.2/", service.provides["path"])

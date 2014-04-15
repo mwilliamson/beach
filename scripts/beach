@@ -90,7 +90,27 @@ def _read_registry_arg(args):
     if registry_config is None:
         return None
     else:
-        return beach.registries.FileRegistry(spur.LocalShell(), registry_config["path"])
+        path = registry_config["path"]
+        # TODO: close shell properly
+        shell = _read_shell(registry_config)
+        return beach.registries.FileRegistry(shell, path)
+
+
+def _read_shell(config):
+    protocol = config.get("protocol")
+    if protocol is None:
+        return spur.LocalShell()
+    elif protocol == "ssh":
+        # TODO: shouldn't blindly accept a missing host key.
+        return spur.SshShell(
+            hostname=config["hostname"],
+            port=config.get("port"),
+            username=config.get("username"),
+            password=config.get("password"),
+            missing_host_key=spur.ssh.MissingHostKey.accept,
+        )
+    else:
+        raise ValueError("Unrecognised protocol: {0}".format(protocol))
 
 
 def _read_config(args):

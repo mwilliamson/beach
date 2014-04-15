@@ -1,11 +1,7 @@
-import contextlib
-
 from nose.tools import istest, nottest, assert_equal, assert_raises
 from nose.plugins.attrib import attr
 import funk
-import peachtree
 import spur
-import starboard
 import requests
 
 import beach
@@ -140,20 +136,7 @@ class ProductionDeploymentTests(BeachTests):
         )
     
     def _start_vm(self, **kwargs):
-        provider = peachtree.qemu_provider()
-        machine = provider.start(self.image_name, **kwargs)
-        try:
-            root_shell = machine.root_shell()
-            hostname = starboard.find_local_hostname()
-            # TODO: verify apt-cacher-ng is running
-            # TODO: verify that caching is working correctly
-            apt_config = 'Acquire::http::Proxy "http://{0}:3142";\n'.format(hostname)
-            with root_shell.open("/etc/apt/apt.conf.d/01-proxy-cache", "w") as config_file:
-                config_file.write(apt_config)
-            return machine
-        except:
-            machine.destroy()
-            raise
+        return testing.start_vm(self.image_name, **kwargs)
 
 
 @istest

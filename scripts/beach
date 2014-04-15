@@ -37,13 +37,14 @@ class DeployCommand(object):
     def execute(self, args):
         app_path = args.app_path
         config = _read_config(args)
+        registry = _read_registry_arg(args)
         
         with beach.supervisors.stop_on_exit() as supervisor:
             with beach.layouts.TemporaryLayout() as layout:
                 deployer = beach.Deployer(
                     supervisor=supervisor,
                     layout=layout,
-                    registry=None,
+                    registry=registry,
                 )
         
                 params = config.get("params", {})
@@ -85,7 +86,11 @@ class DeregisterCommand(object):
 
 def _read_registry_arg(args):
     config = _read_config(args)
-    return beach.registries.FileRegistry(spur.LocalShell(), config["registry"]["path"])
+    registry_config = config.get("registry", None)
+    if registry_config is None:
+        return None
+    else:
+        return beach.registries.FileRegistry(spur.LocalShell(), registry_config["path"])
 
 
 def _read_config(args):

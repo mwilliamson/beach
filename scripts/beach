@@ -32,7 +32,7 @@ class DeployCommand(object):
     def create_parser(self, parser):
         parser.add_argument("app_path", metavar="app-path")
         _add_config_arg(parser)
-        parser.add_argument("--param", "-p", action="append", default=[])
+        parser.add_argument("--param", "-p", action=KeyValueListAction)
     
     def execute(self, args):
         app_path = args.app_path
@@ -46,13 +46,8 @@ class DeployCommand(object):
                     registry=None,
                 )
         
-                explict_params = dict(
-                    param.split("=", 1)
-                    for param in args.param
-                )
-        
                 params = config.get("params", {})
-                params.update(explict_params)
+                params.update(args.param)
                 
                 deployer.deploy(app_path, params=params)
                 
@@ -69,17 +64,11 @@ class RegisterCommand(object):
     def create_parser(self, parser):
         parser.add_argument("name")
         _add_config_arg(parser)
-        parser.add_argument("--provide", "-p", action="append", default=[])
+        parser.add_argument("--provide", "-p", action=KeyValueListAction)
     
     def execute(self, args):
         registry = _read_registry_arg(args)
-        
-        provides = dict(
-            provide.split("=", 1)
-            for provide in args.provide
-        )
-        
-        registry.register(args.name, provides)
+        registry.register(args.name, dict(args.provide))
 
 
 class DeregisterCommand(object):
@@ -111,7 +100,22 @@ def _read_config(args):
 
 def _add_config_arg(parser):
     parser.add_argument("--config", "-c")
+
+
+class KeyValueListAction(argparse.Action):
+    def __init__(self, *args, **kwargs):
+        super(type(self), self).__init__(*args, default=[], **kwargs)
     
+    def __call__(self, parser, namespace, values, option_string=None):
+        if not values:
+            return
+        
+        if getattr(namespace, self.dest, None) is None:
+            setattr(namespace, self.dest, [])
+        
+        key_value_pair = values.split("=", 1)
+        
+        getattr(namespace, self.dest).append(tuple(key_value_pair))
 
 
 if __name__ == "__main__":

@@ -32,6 +32,7 @@ class DeployCommand(object):
     def create_parser(self, parser):
         parser.add_argument("app_path", metavar="app-path")
         _add_config_arg(parser)
+        parser.add_argument("--param", "-p", action="append", default=[])
     
     def execute(self, args):
         app_path = args.app_path
@@ -45,7 +46,13 @@ class DeployCommand(object):
                     registry=None,
                 )
         
-                params = config["params"]
+                explict_params = dict(
+                    param.split("=", 1)
+                    for param in args.param
+                )
+        
+                params = config.get("params", {})
+                params.update(explict_params)
                 
                 deployer.deploy(app_path, params=params)
                 
@@ -93,6 +100,9 @@ def _read_registry_arg(args):
 
 
 def _read_config(args):
+    if args.config is None:
+        return {}
+    
     config_path = args.config
     
     with open(config_path) as config_file:
@@ -100,7 +110,7 @@ def _read_config(args):
 
 
 def _add_config_arg(parser):
-    parser.add_argument("--config", "-c", required=True)
+    parser.add_argument("--config", "-c")
     
 
 

@@ -33,6 +33,23 @@ def can_deploy_temporarily_using_cli():
         finally:
             process.send_signal(signal.SIGINT)
             process.wait_for_result()
+
+
+# TODO: test CLI command line parsing separately
+@istest
+def can_deploy_temporarily_using_cli_with_params_passed_on_command_line():
+    app_path = testing.example_app_path("just-a-script")
+    
+    process = _local.spawn([
+        "beach", "deploy",
+        app_path, "-pport=58080",
+    ])
+    try:
+        response = testing.retry_http_get("http://localhost:58080", timeout=1)
+        assert_equal("Hello", response.text)
+    finally:
+        process.send_signal(signal.SIGINT)
+        process.wait_for_result()
     
 
 @istest

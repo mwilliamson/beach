@@ -1,5 +1,8 @@
-import spur
 import tempfile
+import shutil
+import os
+
+import spur
 from nose.tools import istest, nottest, assert_equal
 
 from beach import registries
@@ -55,3 +58,15 @@ class FileRegistryTests(RegistryTests):
             assert False, "Expected ValueError"
         except ValueError as error:
             assert_equal("Registry file was not valid JSON", str(error))
+    
+@istest
+def file_registry_creates_file_if_it_doesnt_already_exist_when_registering():
+    dir_path = tempfile.mkdtemp()
+    try:
+        registry_path = os.path.join(dir_path, "registry.json")
+        registry = registries.FileRegistry(spur.LocalShell(), registry_path)
+        provides = {"version": "0.10.2"}
+        registry.register("node-0.10", provides=provides)
+        assert_equal(provides, registry.find_service("node-0.10").provides)
+    finally:
+        shutil.rmtree(dir_path)

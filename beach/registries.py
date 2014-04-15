@@ -1,4 +1,5 @@
 import json
+import errno
 
 
 class InMemoryRegistry(object):
@@ -21,7 +22,13 @@ class FileRegistry(object):
         self._path = path
     
     def register(self, name, provides):
-        registry_json = self._read_registry()
+        try:
+            registry_json = self._read_registry()
+        except IOError as error:
+            if error.errno == errno.ENOENT:
+                registry_json = {}
+            else:
+                raise
         registry_json[name] = {"provides": provides}
         self._write_registry(registry_json)
     

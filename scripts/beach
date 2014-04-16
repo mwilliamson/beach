@@ -39,8 +39,26 @@ class DeployCommand(object):
         config = _read_config(args)
         registry = _read_registry_arg(args)
         
-        with beach.supervisors.stop_on_exit() as supervisor:
-            with beach.layouts.TemporaryLayout() as layout:
+        target = config.get("target", {})
+        
+        supervisor_name = target.get("supervisor")
+        if supervisor_name == "runit":
+            supervisor = beach.supervisors.runit(_read_shell(config))
+        elif supervisor_name is None:
+            supervisor = beach.supervisors.stop_on_exit()
+        else:
+            raise ValueError("Unrecognised supervisor: {0}".format(supervisor_name))
+        
+        layout_name = target.get("layout")
+        if layout_name == "user-per-service":
+            layout = beach.layouts.UserPerService(_read_shell(config))
+        elif layout_name is None:
+            layout = beach.layouts.TemporaryLayout()
+        else:
+            raise ValueError("Unrecognised layout: {0}".format(layout_name))
+        
+        with layout:
+            with supervisor:
                 deployer = beach.Deployer(
                     supervisor=supervisor,
                     layout=layout,
@@ -52,11 +70,14 @@ class DeployCommand(object):
                 
                 deployer.deploy(app_path, params=params)
                 
-                try:
-                    while True:
-                        time.sleep(0.1)
-                except KeyboardInterrupt:
-                    return
+                # Keep running if the supervisor is in-process
+                # TODO: this is a bit of a hack
+                if supervisor_name is None:
+                    try:
+                        while True:
+                            time.sleep(0.1)
+                    except KeyboardInterrupt:
+                        return
 
 
 class RegisterCommand(object):

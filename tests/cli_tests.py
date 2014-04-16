@@ -112,7 +112,6 @@ def can_register_services_remotely_using_cli():
                 "path": "/root/beach-registry",
             },
             "target": {
-                "name": "main",
                 "protocol": "ssh",
                 "hostname": target_ssh_config.hostname,
                 "port": target_ssh_config.port,
@@ -135,3 +134,40 @@ def can_register_services_remotely_using_cli():
             registry = beach.registries.FileRegistry(target_shell, "/root/beach-registry")
             service = registry.find_service("node-0.10")
             assert_equal("/opt/node-0.10.2/", service.provides["path"])
+
+
+@attr("slow")
+@istest
+def can_deploy_services_remotely_using_cli():
+    with testing.start_vm("ubuntu-precise-amd64", public_ports=[58080]) as machine:
+        target_ssh_config = machine.ssh_config(username="root")
+        config = {
+            "registry": {
+                "path": "/root/beach-registry",
+            },
+            "target": {
+                "protocol": "ssh",
+                "hostname": target_ssh_config.hostname,
+                "port": target_ssh_config.port,
+                "username": target_ssh_config.user,
+                "password": target_ssh_config.password,
+                
+                "supervisor": "runit",
+                "layout": "user-per-service",
+            },
+        }
+        
+        with tempfile.NamedTemporaryFile() as config_file:
+            json.dump(config, config_file)
+            config_file.flush()
+        
+            app_path = testing.example_app_path("just-a-script")
+            
+            _local.run([
+                "beach", "deploy", "-c", config_file.name,
+                app_path, "-pport=58080",
+            ])
+            address = "http://{0}:{1}".format(machine.external_hostname(), machine.public_port(58080))
+            response = testing.retry_http_get(address, timeout=5)
+            assert_equal("Hello", response.text)
+        

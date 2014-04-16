@@ -28,7 +28,7 @@ class TemporaryLayout(contexts.Closeable):
         return destination, None
 
 
-class UserPerService(object):
+class UserPerService(contexts.Closeable):
     def __init__(self, shell):
         self._shell = shell
         self.run = shell.run

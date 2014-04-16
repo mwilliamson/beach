@@ -52,7 +52,7 @@ def _supervisor(shell, name):
     return Supervisor(shell, path)
 
 
-class Supervisor(object):
+class Supervisor(contexts.Closeable):
     def __init__(self, shell, scripts_dir):
         self._shell = shell
         self._scripts_dir = scripts_dir

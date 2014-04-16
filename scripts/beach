@@ -126,7 +126,7 @@ def _read_shell(config):
         # TODO: shouldn't blindly accept a missing host key.
         return spur.SshShell(
             hostname=target["hostname"],
-            port=target.get("port"),
+            port=target.get("port", 22),
             username=target.get("username"),
             password=target.get("password"),
             missing_host_key=spur.ssh.MissingHostKey.accept,

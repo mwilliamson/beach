@@ -5,6 +5,7 @@ import uuid
 import shutil
 import tempfile
 import subprocess
+import hashlib
 
 import spur
 import tempman
@@ -38,11 +39,16 @@ class UserPerService(contexts.Closeable):
     
     def upload_service(self, service_name, path):
         self._create_user_if_missing(service_name)
-        home_path = self._shell.run(["su", service_name, "-", "-c" "sh -c 'echo $HOME'"]).output.strip()
-        app_path = self._path_join(home_path, "beach-apps", service_name)
-        self._shell.run(["mkdir", "-p", app_path])
         
-        self._upload_dir(path, app_path)
+        with self._create_temp_tarball(path) as local_tarball:
+            service_hash = _file_hash(local_tarball)
+            local_tarball.seek(0)
+            
+            home_path = self._shell.run(["su", service_name, "-", "-c" "sh -c 'echo $HOME'"]).output.strip()
+            app_path = self._path_join(home_path, service_hash[:10])
+            self._shell.run(["mkdir", "-p", app_path])
+            
+            self._upload_tarball(local_tarball, app_path)
         
         return app_path, service_name
         
@@ -50,12 +56,10 @@ class UserPerService(contexts.Closeable):
         if self._shell.run(["id", username], allow_error=True).return_code != 0:
             self._shell.run(["adduser", "--disabled-password", "--gecos", "", username])
     
-    def _upload_dir(self, local_path, remote_path):
-        with self._create_temp_tarball(local_path) as local_tarball:
-            # TODO: hash file to get name
-            remote_tarball_path = os.path.join("/tmp", str(uuid.uuid4()))
-            with self._shell.open(remote_tarball_path, "w") as remote_tarball:
-                shutil.copyfileobj(local_tarball, remote_tarball)
+    def _upload_tarball(self, local_tarball, remote_path):
+        remote_tarball_path = os.path.join("/tmp", str(uuid.uuid4()))
+        with self._shell.open(remote_tarball_path, "w") as remote_tarball:
+            shutil.copyfileobj(local_tarball, remote_tarball)
         
         self._shell.run(["mkdir", "-p", remote_path])
         self._shell.run(
@@ -78,3 +82,13 @@ class UserPerService(contexts.Closeable):
     
     def _path_join(self, *args):
         return posixpath.join(*args)
+
+
+def _file_hash(fileobj):
+    hasher = hashlib.sha1()
+    while True:
+        data = fileobj.read(8192)
+        if not data:
+            break
+        hasher.update(data)
+    return hasher.hexdigest()

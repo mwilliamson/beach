@@ -92,21 +92,22 @@ def _read_registry_arg(args):
     else:
         path = registry_config["path"]
         # TODO: close shell properly
-        shell = _read_shell(registry_config)
+        shell = _read_shell(config)
         return beach.registries.FileRegistry(shell, path)
 
 
 def _read_shell(config):
-    protocol = config.get("protocol")
+    target = config.get("target", {})
+    protocol = target.get("protocol")
     if protocol is None:
         return spur.LocalShell()
     elif protocol == "ssh":
         # TODO: shouldn't blindly accept a missing host key.
         return spur.SshShell(
-            hostname=config["hostname"],
-            port=config.get("port"),
-            username=config.get("username"),
-            password=config.get("password"),
+            hostname=target["hostname"],
+            port=target.get("port"),
+            username=target.get("username"),
+            password=target.get("password"),
             missing_host_key=spur.ssh.MissingHostKey.accept,
         )
     else:

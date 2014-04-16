@@ -109,12 +109,15 @@ def can_register_services_remotely_using_cli():
         target_ssh_config = machine.ssh_config(username="root")
         config = {
             "registry": {
+                "path": "/root/beach-registry",
+            },
+            "target": {
+                "name": "main",
                 "protocol": "ssh",
                 "hostname": target_ssh_config.hostname,
                 "port": target_ssh_config.port,
                 "username": target_ssh_config.user,
                 "password": target_ssh_config.password,
-                "path": "/root/beach-registry",
             },
         }
         

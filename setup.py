@@ -10,6 +10,7 @@ def read(fname):
 
 _install_requires = [
     "tempman>=0.1.2,<0.2",
+    "mayo>=0.2.5,<0.3",
 ]
 
 if sys.version_info[:2] <= (2, 6):

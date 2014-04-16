@@ -1,9 +1,7 @@
 import os
 import posixpath
-import contextlib
 import uuid
 import shutil
-import tempfile
 import subprocess
 import hashlib
 import time
@@ -11,7 +9,7 @@ import time
 import spur
 import tempman
 
-from . import contexts
+from . import contexts, tarballs
 
 _local = spur.LocalShell()
 
@@ -41,7 +39,7 @@ class UserPerService(contexts.Closeable):
     def upload_service(self, service_name, path):
         self._create_user_if_missing(service_name)
         
-        with self._create_temp_tarball(path) as local_tarball:
+        with tarballs.create_temp_tarball(path) as local_tarball:
             service_hash = _file_hash(local_tarball)
             local_tarball.seek(0)
             
@@ -71,15 +69,6 @@ class UserPerService(contexts.Closeable):
             cwd=remote_path,
         )
         self._shell.run(["rm", remote_tarball_path])
-    
-    @contextlib.contextmanager
-    def _create_temp_tarball(self, path):
-        with tempfile.NamedTemporaryFile() as tarball:
-            subprocess.check_call(
-                ["tar", "czf", tarball.name, os.path.basename(path)],
-                cwd=os.path.dirname(path),
-            )
-            yield tarball
     
     def _path_join(self, *args):
         return posixpath.join(*args)

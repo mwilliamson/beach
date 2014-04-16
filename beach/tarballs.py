@@ -6,6 +6,8 @@ import subprocess
 
 @contextlib.contextmanager
 def create_temp_tarball(path):
+    path = os.path.normpath(path)
+    
     with tempfile.NamedTemporaryFile() as tarball:
         subprocess.check_call(
             ["tar", "czf", tarball.name, os.path.basename(path)],

@@ -46,7 +46,7 @@ class UserPerService(contexts.Closeable):
             local_tarball.seek(0)
             
             home_path = self._shell.run(["su", service_name, "-", "-c" "sh -c 'echo $HOME'"]).output.strip()
-            app_path = self._path_join(home_path, "{0}-{1}".format(time.time(), service_hash[:10]))
+            app_path = self._path_join(home_path, "{0}-{1}".format(int(time.time()), service_hash[:10]))
             self._shell.run(["mkdir", "-p", app_path])
             
             self._upload_tarball(local_tarball, app_path)
